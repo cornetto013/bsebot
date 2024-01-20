@@ -38,6 +38,22 @@
             <artifactId>lombok</artifactId>
             <version>1.18.20</version>
         </dependency>
+
+
+        <!--  Quartz Dependencies -->
+        <dependency>
+            <groupId>org.quartz-scheduler</groupId>
+            <artifactId>quartz</artifactId>
+            <version>2.3.2</version> <!-- Use the latest version available -->
+        </dependency>
+
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-quartz</artifactId>
+            <version>3.2.1</version>
+        </dependency>
+
     </dependencies>
 
     <build>
