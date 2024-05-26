@@ -1,34 +1,36 @@
 package com.example.bsebot.bsestocks;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Objects;
 import java.util.Set;
 
-public class OrderCount {
+@Service
+public class OrderCountService {
 
-    public static LocalDate lastResetDate;
-    public static Set<CorporateAnnouncement> corporateAnnouncementSet = new HashSet<>();
+    public LocalDate lastResetDate;
+    public Set<CorporateAnnouncement> corporateAnnouncementSet = new HashSet<>();
 
-
-    static {
+    public OrderCountService() {
         lastResetDate = LocalDate.of(2023, 12, 28);
         corporateAnnouncementSet.add(new CorporateAnnouncement("NEW ORDER RECEIVED",
-                                                               "Company%20Update",
-                                                               "Award%20of%20Order%20%2F%20Receipt%20of%20Order",
-                                                               0));
+                "Company%20Update",
+                "Award%20of%20Order%20%2F%20Receipt%20of%20Order",
+                0));
         corporateAnnouncementSet.add(new CorporateAnnouncement("PRESS RELEASE",
-                                                               "Company%20Update",
-                                                               "Press+Release+%2F+Media+Release",
-                                                               0));
+                "Company%20Update",
+                "Press+Release+%2F+Media+Release",
+                0));
         corporateAnnouncementSet.add(new CorporateAnnouncement("FINANCIAL RESULTS", "Result", "Financial+Results", 0));
     }
 
-    public static void runBSEOrdersJob() {
+    public void runBSEOrdersJob() {
 
         try {
             LocalDate endDate = LocalDate.now();
@@ -41,11 +43,8 @@ public class OrderCount {
             }
             for (CorporateAnnouncement c : corporateAnnouncementSet) {
 
-                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMdd");
-                String END_DATE = endDate.format(formatter);
-                String START_DATE = startDate.format(formatter);
                 int diff = 0;
-                JsonNode jsonNode = BSEClient.callBSEServers(c.categoryUrl, c.subCategoryUrl, START_DATE, END_DATE);
+                JsonNode jsonNode = BSEClient.callBSECorporateActionsEndpoint(c.categoryUrl, c.subCategoryUrl, startDate, endDate);
                 int rowCntValue = jsonNode.path("Table1").get(0).path("ROWCNT").asInt();
                 System.out.println(c.getDisplayName() + " ROWCNT value: " + rowCntValue + " " + LocalDateTime.now());
                 if (c.getCount() != rowCntValue) {
@@ -62,15 +61,19 @@ public class OrderCount {
                         String headlineValue = tableEntry.path("NEWSSUB").asText();
                         String nsURL = tableEntry.path("ATTACHMENTNAME").asText();
                         String time = tableEntry.path("News_submission_dt").asText().replace("T", " ");
+                        String sLongName = tableEntry.path("SLONGNAME").asText();
+                        String scripCD = tableEntry.path("SCRIP_CD").asText();
+                        diff--;
+                        if(!Objects.equals(c.getDisplayName(), "NEW ORDER RECEIVED") && !(StocksCache.getStocksInCache().contains(sLongName.toLowerCase()) || StocksCache.getStocksInCache().contains(scripCD.toLowerCase()))) {
+                            continue;
+                        }
 
                         messageText = "<b><u>" + c.displayName + "</u></b> \n\n" + "<b><u>Time:</u></b> " + time + "\nSUBJECT: " + headlineValue + "\n DOC " + "www.bseindia.com/xml-data/corpfiling/AttachLive/" + nsURL;
                         //System.out.println(messageText);
                         if (botNotificationEnabled) {
-                            //System.out.println("Bot Notification Sent");
+                            //System.out.println(messageText);
                             bot.sendMessage(chatId, messageText);
                         }
-
-                        diff--;
                     }
                     c.setCount(rowCntValue);
 
